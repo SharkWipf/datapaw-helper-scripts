@@ -11,9 +11,9 @@ file="$1"
 first=true
 
 while read line; do
-    username_new="$(echo "$line" | awk -F '|' '{print $1}' | sed -e 's/^ *//;s/ *$//')"
-    address_new="$(echo "$line" | awk -F '|' '{print $3}' | sed -e 's/^ *//;s/ *$//')"
-    amount_new="$(echo "$line" | awk -F '|' '{print $4}' | sed -e 's/^ *//;s/ *$//;s/^\([0-9]*\).*$/\1/')"
+    username_new="$(echo "$line" | awk -F '[|/]' '{print $1}' | sed -e 's/^ *//;s/ *$//')"
+    address_new="$(echo "$line" | awk -F '[|/]' '{print $3}' | sed -e 's/^ *//;s/ *$//')"
+    amount_new="$(echo "$line" | awk -F '[|/]' '{print $4}' | sed -e 's/^ *//;s/ *$//;s/^\([0-9]*\).*$/\1/')"
 
     if [[ "x$first" == "xtrue" ]]; then
         first=
@@ -45,7 +45,7 @@ while read line; do
         fi
     fi
 
-done <<< "$(grep "$file" -e '|' | grep -oe '^.*[0-9]')"
+done <<< "$(grep "$file" -e '^.*#.*|.*|.*|.*$' -e '^.*#.*/.*/.*/.*$' | grep -oe '^.*[0-9]')"
 
 echo "// Discord user: $username"
 echo "payeeTable.Add(\"$address\", $amount);"
