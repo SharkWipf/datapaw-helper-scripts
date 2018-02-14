@@ -6,51 +6,31 @@
 # Make this script executable by running `chmod +x ./masternodeparser_discord.sh` (only need to do this once)
 # Then run: ./masternodeparser_discord.sh /path/to/discord/log.txt
 
-totalshares=0
 file="$1"
-first=true
+rxaddress="$2"
+sharesize="$3"
+
+epath="$(dirname "$0")"
+
+. "$epath/lib/common.sh"
 
 while read line; do
     username_new="$(echo "$line" | awk -F '[|/]' '{print $1}' | sed -e 's/^ *//;s/ *$//')"
-    address_new="$(echo "$line" | awk -F '[|/]' '{print $3}' | sed -e 's/^ *//;s/ *$//')"
-    amount_new="$(echo "$line" | awk -F '[|/]' '{print $4}' | sed -e 's/^ *//;s/ *$//;s/^\([0-9]*\).*$/\1/')"
+    txid_new="$(    echo "$line" | awk -F '[|/]' '{print $2}' | sed -e 's/^ *//;s/ *$//')"
+    address_new="$( echo "$line" | awk -F '[|/]' '{print $3}' | sed -e 's/^ *//;s/ *$//')"
+    amount_new="$(  echo "$line" | awk -F '[|/]' '{print $4}' | sed -e 's/^ *//;s/ *$//;s/^\([0-9]*\).*$/\1/')"
 
-    if [[ "x$first" == "xtrue" ]]; then
-        first=
-        username="$username_new"
-        address="$address_new"
-        amount=0
-    fi
+    generatePayees "$username_new" "$txid_new" "$address_new" "$amount_new"
 
-    if [[ "x$address_new" != "x" ]] && [[ "x$address_new" != "x$address" ]];  then
-        echo "// Discord User: $username"
-        echo "payeeTable.Add(\"$address\", $amount);"
+done <<< "$(grep "$file" -e '^.*#.*|.*|.*|.*$' -e '^.*#.*/.*/.*/.*$' | grep -oe '^.*[0-9]' | sort)"
 
-        totalshares="$(($totalshares + $amount))"
-
-        if [[ "x$username_new" != "x" ]]; then
-            username="$username_new"
-        fi
-        address="$address_new"
-        amount="$amount_new"
-    else
-        if [[ "x$username_new" != "x" ]]; then
-            username="$username_new"
-        fi
-        if [[ "x$address_new" != "x" ]]; then
-            address="$address_new"
-        fi
-        if [[ "x$amount_new" != "x" ]]; then
-            amount="$(($amount + $amount_new))"
-        fi
-    fi
-
-done <<< "$(grep "$file" -e '^.*#.*|.*|.*|.*$' -e '^.*#.*/.*/.*/.*$' | grep -oe '^.*[0-9]')"
-
-echo "// Discord user: $username"
-echo "payeeTable.Add(\"$address\", $amount);"
-totalshares="$(($totalshares + $amount))"
+generatePayees - -
 
 echo
+
 echo "// Total Shares counted: $totalshares"
+
+if varNotEmpty "$totalpaid" "$sharesize"; then
+    echo "// Total Shares paid: $(($totalpaid / $sharesize)) ($totalpaid coins)"
+fi
 

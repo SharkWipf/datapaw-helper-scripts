@@ -5,62 +5,32 @@
 # Make this script executable by running `chmod +x ./masternodeparser_csv.sh` (only need to do this once)
 # Then run: ./masternodeparser_csv.sh /path/to/file.csv
 
-totalshares=0
 file="$1"
-first=true
+rxaddress="$2"
+sharesize="$3"
+
+epath="$(dirname "$0")"
+
+. "$epath/lib/common.sh"
 
 while read line; do
     username_new="$(echo "$line" | awk -F ',' '{print $1}' | sed -e 's/^ *//;s/ *$//')"
-    address_new="$(echo "$line" | awk -F ',' '{print $14}' | sed -e 's/^ *//;s/ *$//')"
-    amount_new="$(echo "$line" | awk -F ',' '{print $23}' | sed -e 's/^ *//;s/ *$//')"
-
-    if [[ "x$first" == "xtrue" ]]; then
-        first=
-        username="$username_new"
-        address="$address_new"
-        amount=0
-    fi
-
-    if [[ "x$address_new" != "x" ]] && [[ "x$address_new" != "x$address" ]];  then
-        echo "// Discord User: $username"
-        echo "payeeTable.Add(\"$address\", $amount);"
-
-        totalshares="$(($totalshares + $amount))"
-
-        if [[ "x$username_new" != "x" ]]; then
-            username="$username_new"
-        fi
-        address="$address_new"
-        amount="$amount_new"
-    else
-        if [[ "x$username_new" != "x" ]]; then
-            username="$username_new"
-        fi
-        if [[ "x$address_new" != "x" ]]; then
-            address="$address_new"
-        fi
-        if [[ "x$amount_new" != "x" ]]; then
-            amount="$(($amount + $amount_new))"
-        fi
-    fi
+    txid_new="$(    echo "$line" | awk -F ',' '{print $5}' | sed -e 's/^ *//;s/ *$//')"
+    address_new="$( echo "$line" | awk -F ',' '{print $14}' | sed -e 's/^ *//;s/ *$//')"
+    amount_new="$(  echo "$line" | awk -F ',' '{print $23}' | sed -e 's/^ *//;s/ *$//')"
 
     echo "$line" | grep -e '^[,]\+$' &>/dev/null
     if [[ $? -eq 0 ]]; then
-        echo "// Discord user: $username"
-        echo "payeeTable.Add(\"$address\", $amount);"
-
-        totalshares="$(($totalshares + $amount))"
-        echo
-        echo "// Total shares counted: $totalshares"
-
-        exit
+        generatePayees - -
+        break
     fi
-done <<< "$(cat "$file" | tail -n +2 | dos2unix)"
+    generatePayees "$username_new" "$txid_new" "$address_new" "$amount_new"
 
-echo "// Discord user: $username"
-echo "payeeTable.Add(\"$address\", $amount);"
+done <<< "$(tail -n +2 "$file" | dos2unix)"
 
-totalshares="$(($totalshares + $amount))"
 echo
 echo "// Total shares counted: $totalshares"
 
+if varNotEmpty "$totalpaid" "$sharesize"; then
+    echo "// Total Shares paid: $(($totalpaid / $sharesize)) ($totalpaid coins)"
+fi
